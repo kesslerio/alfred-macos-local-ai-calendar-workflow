@@ -38,12 +38,28 @@ func parseISO8601Date(string: String) -> Date? {
     return formatter.date(from: string)
 }
 
-func getArgValue(flag: String) -> String? {
+// Parse argv after the subcommand into --flag/value pairs in a single
+// left-to-right pass. This prevents a value that happens to look like a flag
+// (e.g. a title of "--calendar") from being mis-detected as a flag and swapping
+// field values, which a naive firstIndex(of:) lookup would allow.
+let parsedArgs: [String: String] = {
+    var result: [String: String] = [:]
     let args = CommandLine.arguments
-    if let index = args.firstIndex(of: flag), index + 1 < args.count {
-        return args[index + 1]
+    var i = 2 // skip executable path (0) and subcommand (1)
+    while i < args.count {
+        let token = args[i]
+        if token.hasPrefix("--"), i + 1 < args.count {
+            result[token] = args[i + 1]
+            i += 2
+        } else {
+            i += 1
+        }
     }
-    return nil
+    return result
+}()
+
+func getArgValue(flag: String) -> String? {
+    return parsedArgs[flag]
 }
 
 func printJSON(_ obj: Any) {
