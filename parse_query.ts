@@ -394,20 +394,26 @@ async function run() {
         event.calendar_hint = explicitCal;
       }
 
-      // Deterministic recurrence backstop for repetition phrases the model missed.
-      if (!event.recurrence) {
-        const recurrence = extractRecurrence(targetQuery);
-        if (recurrence) {
-          event.recurrence = recurrence;
+      // Recurrence handling applies only to new events. For update/delete/search
+      // the title is a search key / model-chosen new name and a frequency word
+      // (e.g. "reschedule the weekly standup") is an identifier, not a directive —
+      // injecting recurrence or stripping the title there would corrupt the request.
+      if (event.intent === "create") {
+        // Deterministic recurrence backstop for repetition phrases the model missed.
+        if (!event.recurrence) {
+          const recurrence = extractRecurrence(targetQuery);
+          if (recurrence) {
+            event.recurrence = recurrence;
+          }
         }
-      }
-      // Strip leftover recurrence keywords from the model-produced title.
-      if (event.recurrence) {
-        event.title = event.title
-          .replace(/\b(every other|every|each)\b/gi, " ")
-          .replace(/\b(daily|weekly|monthly|yearly|annually|bi-?weekly)\b/gi, " ")
-          .replace(/\s+/g, " ")
-          .trim();
+        // Strip leftover recurrence keywords from the model-produced title.
+        if (event.recurrence) {
+          event.title = event.title
+            .replace(/\b(every other|every|each)\b/gi, " ")
+            .replace(/\b(daily|weekly|monthly|yearly|annually|bi-?weekly)\b/gi, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+        }
       }
 
       if (event.intent === "create") {
