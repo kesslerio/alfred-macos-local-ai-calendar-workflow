@@ -222,6 +222,8 @@ Guidelines:
     model: modelName,
     prompt: prompt,
     stream: false,
+    // Keep the model resident so intermittent Alfred queries avoid repeated cold loads.
+    keep_alive: "30m",
     format: {
       type: "object",
       properties: {
@@ -256,7 +258,9 @@ Guidelines:
   };
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 seconds timeout
+  // 15s allows a 12B model (e.g. gemma4:12b) to cold-load without falsely
+  // tripping the offline fallback; warm parses still return in ~2-3s.
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
 
   try {
     const response = await fetch("http://localhost:11434/api/generate", {
@@ -306,7 +310,7 @@ function printAlfredJSON(items: any[]) {
 async function run() {
   const query = process.argv[2] || "";
   const action = process.env.action || "";
-  const modelName = process.env.OLLAMA_MODEL || "qwen3.5:4b";
+  const modelName = process.env.OLLAMA_MODEL || "gemma4:12b";
 
   try {
     // STATE 1: Default Typing State

@@ -4,7 +4,7 @@ An ultra-fast, privacy-first natural language calendar assistant for Alfred 5. I
 
 ## 🚀 Features
 
-* **🏎️ Ultra-Low Latency:** Parses events in ~1.5 seconds by leveraging Ollama's schema-constrained structured output (skipping heavy thinking token generations).
+* **🏎️ Low Latency:** Parses events in ~2-3 seconds (warm) by leveraging Ollama's schema-constrained structured output (skipping heavy thinking token generations).
 * **🧠 High Accuracy:** Resolves relative times (like "tomorrow 5pm" or "next Monday") relative to your active system clock and timezone.
 * **🛡️ Privacy-First:** Everything runs 100% locally. No calendar history or events are ever sent to external APIs.
 * **⚡ EventKit Backend:** Uses a compiled Swift helper to interact directly with Apple Calendar, ensuring robust support for creating, searching, updating, and deleting events without slow AppleScript.
@@ -17,9 +17,9 @@ An ultra-fast, privacy-first natural language calendar assistant for Alfred 5. I
 1. **Alfred 5** (with Powerpack to run workflows).
 2. **[Ollama](https://ollama.com/)** running locally.
 3. **[Bun](https://bun.sh/)** installed for fast TypeScript execution.
-4. **Calendar Model:** We recommend pulling `qwen3.5:4b` or `gemma4:12b`:
+4. **Calendar Model:** We recommend `gemma4:12b` for the best parsing accuracy (the default). For lower latency on constrained hardware, `qwen3.5:4b` is a faster but less accurate alternative:
    ```bash
-   ollama pull qwen3.5:4b
+   ollama pull gemma4:12b
    ```
 
 ---
@@ -28,7 +28,7 @@ An ultra-fast, privacy-first natural language calendar assistant for Alfred 5. I
 
 1. Download the latest `.alfredworkflow` package from the [Releases](https://github.com/kesslerio/alfred-macos-local-ai-calendar-workflow/releases) page.
 2. Double-click the downloaded file to import it into Alfred.
-3. Open Alfred Preferences, click on the **Local AI Calendar** workflow, and configure your preferred **Ollama Model** (defaults to `qwen3.5:4b`).
+3. Open Alfred Preferences, click on the **Local AI Calendar** workflow, and configure your preferred **Ollama Model** (defaults to `gemma4:12b`).
 
 ---
 
