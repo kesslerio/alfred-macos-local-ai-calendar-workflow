@@ -26,7 +26,7 @@ An ultra-fast, privacy-first natural language calendar assistant for Alfred 5. I
 
 ## 📥 Installation
 
-1. Download the latest `.alfredworkflow` package from the [Releases](https://github.com/kesslerio/local-ai-calendar-workflow/releases) page.
+1. Download the latest `.alfredworkflow` package from the [Releases](https://github.com/kesslerio/alfred-macos-local-ai-calendar-workflow/releases) page.
 2. Double-click the downloaded file to import it into Alfred.
 3. Open Alfred Preferences, click on the **Local AI Calendar** workflow, and configure your preferred **Ollama Model** (defaults to `qwen3.5:4b`).
 
