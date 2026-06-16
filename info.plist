@@ -252,7 +252,7 @@ bun run execute_mutation.ts</string>
 				<string>com.kesslerio.local-ai-cal</string>
 			</dict>
 			<key>type</key>
-			<string>alfred.workflow.action.trigger</string>
+			<string>alfred.workflow.output.callexternaltrigger</string>
 			<key>uid</key>
 			<string>A0352C31-5671-42D7-8975-7791BCE883BB</string>
 			<key>version</key>
