@@ -98,6 +98,65 @@ func main() {
         event.endDate = endDate
         event.calendar = targetCalendar
         
+        if let location = getArgValue(flag: "--location") {
+            event.location = location
+        }
+        if let urlStr = getArgValue(flag: "--url"), let url = URL(string: urlStr) {
+            event.url = url
+        }
+        if let notes = getArgValue(flag: "--notes") {
+            event.notes = notes
+        }
+        
+        if let freqStr = getArgValue(flag: "--recurrence-frequency") {
+            var frequency: EKRecurrenceFrequency? = nil
+            switch freqStr.lowercased() {
+            case "daily": frequency = .daily
+            case "weekly": frequency = .weekly
+            case "monthly": frequency = .monthly
+            case "yearly": frequency = .yearly
+            default: break
+            }
+            
+            if let freq = frequency {
+                var interval = 1
+                if let intervalStr = getArgValue(flag: "--recurrence-interval"), let val = Int(intervalStr) {
+                    interval = val
+                }
+                
+                var daysOfTheWeek: [EKRecurrenceDayOfWeek]? = nil
+                if let daysStr = getArgValue(flag: "--recurrence-days") {
+                    let daysList = daysStr.components(separatedBy: ",")
+                    daysOfTheWeek = daysList.compactMap { dayName -> EKRecurrenceDayOfWeek? in
+                        let d = dayName.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                        switch d {
+                        case "monday", "mon": return EKRecurrenceDayOfWeek(.monday)
+                        case "tuesday", "tue": return EKRecurrenceDayOfWeek(.tuesday)
+                        case "wednesday", "wed": return EKRecurrenceDayOfWeek(.wednesday)
+                        case "thursday", "thu": return EKRecurrenceDayOfWeek(.thursday)
+                        case "friday", "fri": return EKRecurrenceDayOfWeek(.friday)
+                        case "saturday", "sat": return EKRecurrenceDayOfWeek(.saturday)
+                        case "sunday", "sun": return EKRecurrenceDayOfWeek(.sunday)
+                        default: return nil
+                        }
+                    }
+                }
+                
+                let rule = EKRecurrenceRule(
+                    recurrenceWith: freq,
+                    interval: interval,
+                    daysOfTheWeek: daysOfTheWeek,
+                    daysOfTheMonth: nil,
+                    monthsOfTheYear: nil,
+                    weeksOfTheYear: nil,
+                    daysOfTheYear: nil,
+                    setPositions: nil,
+                    end: nil
+                )
+                event.recurrenceRules = [rule]
+            }
+        }
+        
         do {
             try eventStore.save(event, span: .thisEvent)
             print("Success: Added '\(title)' to '\(targetCalendar.title)' (ID: \(event.eventIdentifier ?? ""))")
@@ -141,7 +200,10 @@ func main() {
                 "title": event.title ?? "",
                 "start_date": ISO8601DateFormatter().string(from: event.startDate),
                 "end_date": ISO8601DateFormatter().string(from: event.endDate),
-                "calendar": event.calendar?.title ?? ""
+                "calendar": event.calendar?.title ?? "",
+                "location": event.location ?? "",
+                "notes": event.notes ?? "",
+                "url": event.url?.absoluteString ?? ""
             ]
         }
         printJSON(results)
@@ -197,6 +259,66 @@ func main() {
         }
         if let calendarName = getArgValue(flag: "--calendar"), let cal = findCalendar(name: calendarName) {
             event.calendar = cal
+        }
+        if let location = getArgValue(flag: "--location") {
+            event.location = location
+        }
+        if let urlStr = getArgValue(flag: "--url") {
+            event.url = urlStr.isEmpty ? nil : URL(string: urlStr)
+        }
+        if let notes = getArgValue(flag: "--notes") {
+            event.notes = notes
+        }
+        
+        if let freqStr = getArgValue(flag: "--recurrence-frequency") {
+            var frequency: EKRecurrenceFrequency? = nil
+            switch freqStr.lowercased() {
+            case "daily": frequency = .daily
+            case "weekly": frequency = .weekly
+            case "monthly": frequency = .monthly
+            case "yearly": frequency = .yearly
+            case "none", "clear", "":
+                event.recurrenceRules = nil
+            default: break
+            }
+            
+            if let freq = frequency {
+                var interval = 1
+                if let intervalStr = getArgValue(flag: "--recurrence-interval"), let val = Int(intervalStr) {
+                    interval = val
+                }
+                
+                var daysOfTheWeek: [EKRecurrenceDayOfWeek]? = nil
+                if let daysStr = getArgValue(flag: "--recurrence-days") {
+                    let daysList = daysStr.components(separatedBy: ",")
+                    daysOfTheWeek = daysList.compactMap { dayName -> EKRecurrenceDayOfWeek? in
+                        let d = dayName.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                        switch d {
+                        case "monday", "mon": return EKRecurrenceDayOfWeek(.monday)
+                        case "tuesday", "tue": return EKRecurrenceDayOfWeek(.tuesday)
+                        case "wednesday", "wed": return EKRecurrenceDayOfWeek(.wednesday)
+                        case "thursday", "thu": return EKRecurrenceDayOfWeek(.thursday)
+                        case "friday", "fri": return EKRecurrenceDayOfWeek(.friday)
+                        case "saturday", "sat": return EKRecurrenceDayOfWeek(.saturday)
+                        case "sunday", "sun": return EKRecurrenceDayOfWeek(.sunday)
+                        default: return nil
+                        }
+                    }
+                }
+                
+                let rule = EKRecurrenceRule(
+                    recurrenceWith: freq,
+                    interval: interval,
+                    daysOfTheWeek: daysOfTheWeek,
+                    daysOfTheMonth: nil,
+                    monthsOfTheYear: nil,
+                    weeksOfTheYear: nil,
+                    daysOfTheYear: nil,
+                    setPositions: nil,
+                    end: nil
+                )
+                event.recurrenceRules = [rule]
+            }
         }
         
         do {

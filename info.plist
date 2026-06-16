@@ -19,6 +19,19 @@
 				<false/>
 			</dict>
 		</array>
+		<key>7FAB46EC-118E-45A8-AAAB-56977496DDB6</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>CCECD48B-2DF0-44F5-BF9A-266A0128BF4A</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
 		<key>83EBFE48-10D9-4F3A-A8CB-8B8439A5F737</key>
 		<array>
 			<dict>
@@ -68,19 +81,6 @@
 				<false/>
 			</dict>
 		</array>
-		<key>7FAB46EC-118E-45A8-AAAB-56977496DDB6</key>
-		<array>
-			<dict>
-				<key>destinationuid</key>
-				<string>CCECD48B-2DF0-44F5-BF9A-266A0128BF4A</string>
-				<key>modifiers</key>
-				<integer>0</integer>
-				<key>modifiersubtext</key>
-				<string></string>
-				<key>vitoclose</key>
-				<false/>
-			</dict>
-		</array>
 		<key>F194DB8E-8A32-4A44-95D9-F7C9AA7EA91E</key>
 		<array>
 			<dict>
@@ -96,7 +96,7 @@
 		</array>
 	</dict>
 	<key>createdby</key>
-	<string>Martin Kessler</string>
+	<string>kesslerIO</string>
 	<key>description</key>
 	<string>Add, update, or delete Apple Calendar events using local models on Ollama.</string>
 	<key>disabled</key>
@@ -252,7 +252,7 @@ bun run execute_mutation.ts</string>
 				<string>com.kesslerio.local-ai-cal</string>
 			</dict>
 			<key>type</key>
-			<string>alfred.workflow.action.trigger</string>
+			<string>alfred.workflow.output.callexternaltrigger</string>
 			<key>uid</key>
 			<string>A0352C31-5671-42D7-8975-7791BCE883BB</string>
 			<key>version</key>
@@ -300,9 +300,9 @@ Usage:
   cal [query] [flag]
   
 Flags:
-  /personal -> "Personal"
-  /work     -> "martin@shapescale.com"
-  /family   -> "mkesslerhk@googlemail.com"
+  /personal -&gt; "Personal"
+  /work     -&gt; "martin@shapescale.com"
+  /family   -&gt; "mkesslerhk@googlemail.com"
   (Default calendar is "Personal")</string>
 	<key>uidata</key>
 	<dict>
@@ -313,19 +313,19 @@ Flags:
 			<key>ypos</key>
 			<integer>100</integer>
 		</dict>
-		<key>83EBFE48-10D9-4F3A-A8CB-8B8439A5F737</key>
-		<dict>
-			<key>xpos</key>
-			<integer>440</integer>
-			<key>ypos</key>
-			<integer>100</integer>
-		</dict>
 		<key>7FAB46EC-118E-45A8-AAAB-56977496DDB6</key>
 		<dict>
 			<key>xpos</key>
 			<integer>600</integer>
 			<key>ypos</key>
 			<integer>60</integer>
+		</dict>
+		<key>83EBFE48-10D9-4F3A-A8CB-8B8439A5F737</key>
+		<dict>
+			<key>xpos</key>
+			<integer>440</integer>
+			<key>ypos</key>
+			<integer>100</integer>
 		</dict>
 		<key>A0352C31-5671-42D7-8975-7791BCE883BB</key>
 		<dict>
@@ -334,19 +334,19 @@ Flags:
 			<key>ypos</key>
 			<integer>200</integer>
 		</dict>
-		<key>F194DB8E-8A32-4A44-95D9-F7C9AA7EA91E</key>
-		<dict>
-			<key>xpos</key>
-			<integer>40</integer>
-			<key>ypos</key>
-			<integer>100</integer>
-		</dict>
 		<key>CCECD48B-2DF0-44F5-BF9A-266A0128BF4A</key>
 		<dict>
 			<key>xpos</key>
 			<integer>780</integer>
 			<key>ypos</key>
 			<integer>60</integer>
+		</dict>
+		<key>F194DB8E-8A32-4A44-95D9-F7C9AA7EA91E</key>
+		<dict>
+			<key>xpos</key>
+			<integer>40</integer>
+			<key>ypos</key>
+			<integer>100</integer>
 		</dict>
 	</dict>
 	<key>userconfigurationconfig</key>
@@ -355,7 +355,7 @@ Flags:
 			<key>config</key>
 			<dict>
 				<key>default</key>
-				<string>qwen3.5:4b</string>
+				<string>gemma4:12b</string>
 				<key>placeholder</key>
 				<string></string>
 				<key>required</key>
@@ -364,7 +364,7 @@ Flags:
 				<true/>
 			</dict>
 			<key>description</key>
-			<string>The Ollama model tag to use for natural language parsing (e.g. qwen3.5:4b, qwen3.6:27b).</string>
+			<string>The Ollama model tag to use for natural language parsing (e.g. gemma4:12b, qwen3.5:4b).</string>
 			<key>label</key>
 			<string>Ollama Model</string>
 			<key>type</key>

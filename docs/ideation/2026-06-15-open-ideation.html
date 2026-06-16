@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ideation: Calendar Workflow Improvements</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #080b11;
+      --card-bg: #0f131a;
+      --border-color: #1f2633;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --primary: #3b82f6;
+      --primary-glow: rgba(59, 130, 246, 0.15);
+      --accent-green: #10b981;
+      --accent-green-glow: rgba(16, 185, 129, 0.1);
+      --accent-yellow: #f59e0b;
+      --accent-yellow-glow: rgba(245, 158, 11, 0.1);
+      --accent-purple: #8b5cf6;
+      --accent-red: #ef4444;
+      --accent-red-glow: rgba(239, 68, 68, 0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      padding: 2rem 1rem 4rem 1rem;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    /* Header styling with gradient glow */
+    header {
+      position: relative;
+      background: radial-gradient(circle at top left, var(--primary-glow), transparent 60%);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 2.5rem;
+      margin-bottom: 2rem;
+      overflow: hidden;
+    }
+
+    .metadata-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      margin-bottom: 1rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1rem;
+    }
+
+    .metadata-item strong {
+      color: var(--text-main);
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(to right, #ffffff, #a3e635, #3b82f6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+    }
+
+    /* Sections */
+    section {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    h2 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    h2::before {
+      content: '';
+      display: inline-block;
+      width: 4px;
+      height: 1.25rem;
+      background-color: var(--primary);
+      border-radius: 2px;
+    }
+
+    p {
+      color: var(--text-main);
+      margin-bottom: 1rem;
+    }
+
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      background-color: #161b22;
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.9em;
+      color: #f0f6fc;
+      border: 1px solid #30363d;
+    }
+
+    ul, ol {
+      margin-left: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    li {
+      margin-bottom: 0.5rem;
+      color: var(--text-main);
+    }
+
+    /* Jump Nav */
+    .jump-list {
+      background-color: rgba(255, 255, 255, 0.02);
+      border: 1px dashed var(--border-color);
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .jump-list-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .jump-list ul {
+      list-style: none;
+      margin-left: 0;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.4rem;
+    }
+
+    @media (min-width: 600px) {
+      .jump-list ul {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .jump-list a {
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .jump-list a:hover {
+      text-decoration: underline;
+    }
+
+    /* Cards */
+    article.idea-card {
+      border: 1px solid var(--border-color);
+      background-color: #0b0e14;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    article.idea-card:hover {
+      transform: translateY(-2px);
+      border-color: #3b82f6aa;
+    }
+
+    .card-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .idea-rank-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .rank-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      background-color: var(--primary-glow);
+      color: var(--primary);
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      font-weight: 600;
+    }
+
+    .idea-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .badges {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.2rem 0.5rem;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    .badge-high { background-color: var(--accent-green-glow); color: var(--accent-green); border: 1px solid rgba(16, 185, 129, 0.2); }
+    .badge-med { background-color: var(--accent-yellow-glow); color: var(--accent-yellow); border: 1px solid rgba(245, 158, 11, 0.2); }
+    .badge-low { background-color: var(--primary-glow); color: var(--primary); border: 1px solid rgba(59, 130, 246, 0.2); }
+    .badge-danger { background-color: var(--accent-red-glow); color: var(--accent-red); border: 1px solid rgba(239, 68, 68, 0.2); }
+
+    .idea-fields {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .field-pair {
+      border-left: 2px solid var(--border-color);
+      padding-left: 0.75rem;
+    }
+
+    .field-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.15rem;
+    }
+
+    .basis-tag {
+      font-family: 'JetBrains Mono', monospace;
+      color: #a3e635;
+      font-weight: 500;
+    }
+
+    /* Diagram wrapper */
+    .diagram-container {
+      background-color: #07090d;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 1rem;
+      margin: 1rem 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .diagram-container svg {
+      max-width: 100%;
+      height: auto;
+    }
+
+    /* Rejection Summary Table */
+    .table-container {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      text-align: left;
+    }
+
+    th, td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    th {
+      font-weight: 600;
+      color: var(--text-muted);
+      background-color: rgba(255, 255, 255, 0.01);
+    }
+
+    tr:hover td {
+      background-color: rgba(255, 255, 255, 0.01);
+    }
+
+    td code {
+      font-size: 0.85em;
+    }
+
+    .gap-row td {
+      color: var(--accent-yellow);
+      background-color: rgba(245, 158, 11, 0.02);
+      font-weight: 500;
+    }
+
+    footer {
+      border-top: 1px solid var(--border-color);
+      padding-top: 1.5rem;
+      margin-top: 3rem;
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    footer code {
+      background: none;
+      border: none;
+      padding: 0;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="metadata-strip">
+        <div class="metadata-item"><strong>Date:</strong> 2026-06-15</div>
+        <div class="metadata-item"><strong>Topic:</strong> alfred-macos-local-ai-calendar-workflow</div>
+        <div class="metadata-item"><strong>Mode:</strong> repo-grounded</div>
+      </div>
+      <h1>Local AI Calendar Ideation</h1>
+      <div class="subtitle">Ranked improvements and strategic directions for local LLM-constrained calendar automation</div>
+    </header>
+
+    <section id="grounding">
+      <h2>Grounding Context</h2>
+      <p>This ideation is grounded directly in the codebase of <code>alfred-macos-local-ai-calendar-workflow</code>. The workflow contains the following key components:</p>
+      <ul>
+        <li><code>main.swift</code>: A native Swift helper wrapping <code>EventKit</code> to read and mutate events. Currently only supports basic fields: title, start date, end date, and calendar.</li>
+        <li><code>parse_query.ts</code>: A TypeScript coordinator that routes the Alfred query to Ollama using schema-constrained grammar formats for low-latency JSON output.</li>
+        <li><code>execute_mutation.ts</code>: A TypeScript file executing mutations via process spawning to the Swift binary.</li>
+        <li><code>info.plist</code>: The Alfred workflow plist configuration controlling script filters and user text input.</li>
+      </ul>
+      <p>The core constraint of the workflow is retaining the <strong>~1.5-second execution speed</strong> while enhancing safety, capability, and ease of use.</p>
+    </section>
+
+    <section id="axes">
+      <h2>Topic Axes</h2>
+      <p><code>Decomposition skipped — surprise-me mode</code></p>
+    </section>
+
+    <section id="ranked-ideas">
+      <h2>Ranked Ideas</h2>
+      <div class="jump-list">
+        <div class="jump-list-title">Jump to Candidate</div>
+        <ul>
+          <li><a href="#idea-1"><span class="rank-pill">1</span> Location, Notes, and URL Metadata Fields</a></li>
+          <li><a href="#idea-2"><span class="rank-pill">2</span> Recurrence Rules Support (EKRecurrenceRule)</a></li>
+          <li><a href="#idea-3"><span class="rank-pill">3</span> Offline Fallback Parser (Chrono-Node)</a></li>
+          <li><a href="#idea-4"><span class="rank-pill">4</span> Auto-Select Calendar by Event Semantics</a></li>
+          <li><a href="#idea-5"><span class="rank-pill">5</span> Create Apple Reminders Directly (EKReminder)</a></li>
+          <li><a href="#idea-6"><span class="rank-pill">6</span> Immediate Mutation with "Undo" Banner</a></li>
+          <li><a href="#idea-7"><span class="rank-pill">7</span> Graceful Ollama Offline Error States</a></li>
+        </ul>
+      </div>
+
+      <!-- Idea 1 -->
+      <article class="idea-card" id="idea-1">
+        <div class="card-header">
+          <div class="idea-rank-title">
+            <span class="rank-pill">1</span>
+            <h3 class="idea-title">Location, Notes, and URL Metadata Fields</h3>
+          </div>
+          <div class="badges">
+            <span class="badge badge-high">Conf: 95%</span>
+            <span class="badge badge-low">Cx: Low</span>
+          </div>
+        </div>
+        <p class="idea-description">
+          <strong>Description:</strong> Expands the EventKit Swift binary's arguments and <code>parse_query.ts</code> schema constraints to support event locations, URLs, and descriptive notes. The local LLM will extract these parameters from strings like "Wed 9am client sync at Starbucks http://zoom.us" and apply them to the created calendar event.
+        </p>
+        
+        <div class="diagram-container">
+          <svg viewBox="0 0 700 200" width="700" height="200" xmlns="http://www.w3.org/2000/svg">
+            <rect x="10" y="10" width="680" height="180" rx="10" fill="#0c1017" stroke="#1f2633" stroke-width="2"/>
+            
+            <!-- Natural Language input -->
+            <rect x="30" y="60" width="160" height="80" rx="6" fill="#161b22" stroke="#30363d"/>
+            <text x="40" y="90" fill="#8b949e" font-size="11" font-family="monospace">Input Query:</text>
+            <text x="40" y="110" fill="#ffffff" font-size="12" font-weight="bold">"sync at Room 4B</text>
+            <text x="40" y="125" fill="#ffffff" font-size="12" font-weight="bold">zoom.us/j/123"</text>
+            
+            <!-- Arrow -->
+            <path d="M 200 100 L 250 100" stroke="#3b82f6" stroke-width="2" marker-end="url(#arrow)"/>
+            <text x="208" y="90" fill="#3b82f6" font-size="10" font-weight="bold">LLM Schema</text>
+            
+            <!-- Extracted JSON -->
+            <rect x="265" y="40" width="170" height="120" rx="6" fill="#161b22" stroke="#30363d"/>
+            <text x="275" y="65" fill="#a3e635" font-size="11" font-family="monospace">location: "Room 4B"</text>
+            <text x="275" y="85" fill="#a3e635" font-size="11" font-family="monospace">url: "zoom.us/j/123"</text>
+            <text x="275" y="105" fill="#8b949e" font-size="11" font-family="monospace">title: "sync"</text>
+            <text x="275" y="125" fill="#8b949e" font-size="11" font-family="monospace">start: "2026-06-15T09:00Z"</text>
+            
+            <!-- Arrow -->
+            <path d="M 445 100 L 490 100" stroke="#10b981" stroke-width="2" />
+            <text x="450" y="90" fill="#10b981" font-size="10" font-weight="bold">EventKit</text>
+            
+            <!-- EKEvent Record -->
+            <rect x="505" y="50" width="160" height="100" rx="6" fill="#0d1117" stroke="#10b981" stroke-width="2"/>
+            <text x="515" y="75" fill="#ffffff" font-size="13" font-weight="600">EKEvent Saved</text>
+            <text x="515" y="95" fill="#9ca3af" font-size="11">📍 Location: Room 4B</text>
+            <text x="515" y="115" fill="#9ca3af" font-size="11">🔗 URL: zoom.us/j/123</text>
+            
+            <defs>
+              <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#3b82f6"/>
+              </marker>
+            </defs>
+          </svg>
+        </div>
+
+        <div class="idea-fields">
+          <div class="field-pair">
+            <div class="field-label">Basis</div>
+            <div class="field-value"><span class="basis-tag">direct:main.swift#L95-99</span> (Event save mechanism only binds core title, start, and end parameters, ignoring standard EventKit metadata properties).</div>
+          </div>
+          <div class="field-pair">
+            <div class="field-label">Rationale</div>
+            <div class="field-value">Capturing coordinates (locations, video links, notes) makes the parser fully comparable to proprietary services like Fantastical while retaining complete local data ownership.</div>
+          </div>
+          <div class="field-pair">
+            <div class="field-label">Downsides</div>
+            <div class="field-value">Extends the Ollama JSON schema property count, which could slightly increase parsing token counts, though in grammar-constrained modes this addition is negligible.</div>
+          </div>
+        </div>
+      </article>
+
+      <!-- Idea 2 -->
+      <article class="idea-card" id="idea-2">
+        <div class="card-header">
+          <div class="idea-rank-title">
+            <span class="rank-pill">2</span>
+            <h3 class="idea-title">Recurrence Rules Support (EKRecurrenceRule)</h3>
+          </div>
+          <div class="badges">
+            <span class="badge badge-high">Conf: 90%</span>
+            <span class="badge badge-med">Cx: Medium</span>
+          </div>
+        </div>
+        <p class="idea-description">
+          <strong>Description:</strong> Adds support for recurring events (e.g. "every Tuesday", "weekly sync"). The local model returns structured recurrence parameters (frequency, interval, end boundary) and `main.swift` uses `EKRecurrenceRule` to save these recurrence schedules in Apple Calendar.
+        </p>
+
+        <div class="diagram-container">
+          <svg viewBox="0 0 700 200" width="700" height="200" xmlns="http://www.w3.org/2000/svg">
+            <rect x="10" y="10" width="680" height="180" rx="10" fill="#0c1017" stroke="#1f2633" stroke-width="2"/>
+            
+            <!-- Recurrent description -->
+            <rect x="30" y="60" width="170" height="80" rx="6" fill="#161b22" stroke="#30363d"/>
+            <text x="40" y="90" fill="#8b949e" font-size="11" font-family="monospace">User Input:</text>
+            <text x="40" y="115" fill="#ffffff" font-size="12" font-weight="bold">"weekly team sync</text>
+            <text x="40" y="130" fill="#ffffff" font-size="12" font-weight="bold">every monday 9am"</text>
+            
+            <!-- Arrow -->
+            <path d="M 210 100 L 260 100" stroke="#3b82f6" stroke-width="2" />
+            <text x="215" y="90" fill="#3b82f6" font-size="10" font-weight="bold">Ollama JSON</text>
+            
+            <!-- JSON output -->
+            <rect x="275" y="45" width="200" height="110" rx="6" fill="#161b22" stroke="#30363d"/>
+            <text x="285" y="70" fill="#a3e635" font-size="10" font-family="monospace">recurrence: {</text>
+            <text x="305" y="90" fill="#a3e635" font-size="10" font-family="monospace">frequency: "weekly",</text>
+            <text x="305" y="110" fill="#a3e635" font-size="10" font-family="monospace">days_of_week: ["monday"]</text>
+            <text x="285" y="130" fill="#a3e635" font-size="10" font-family="monospace">}</text>
+            
+            <!-- Arrow -->
+            <path d="M 485 100 L 535 100" stroke="#8b5cf6" stroke-width="2" />
+            <text x="492" y="90" fill="#8b5cf6" font-size="10" font-weight="bold">Swift SDK</text>
+            
+            <!-- EKRecurrenceRule -->
+            <rect x="550" y="55" width="120" height="90" rx="6" fill="#0d1117" stroke="#8b5cf6" stroke-width="2"/>
+            <text x="560" y="80" fill="#ffffff" font-size="11" font-weight="600">EKRecurrenceRule</text>
+            <text x="560" y="100" fill="#9ca3af" font-size="10">Freq: Weekly</text>
+            <text x="560" y="115" fill="#9ca3af" font-size="10">Interval: 1</text>
+            <text x="560" y="130" fill="#9ca3af" font-size="10">Day: Monday</text>
+          </svg>
+        </div>
+
+        <div class="idea-fields">
+          <div class="field-pair">
+            <div class="field-label">Basis</div>
+            <div class="field-value"><span class="basis-tag">direct:main.swift#L95-107</span> (No usage of <code>EKRecurrenceRule</code>; saved events are strictly one-shot instances).</div>
+          </div>
+          <div class="field-pair">
+            <div class="field-label">Rationale</div>
+            <div class="field-value">A significant portion of user events are recurring. Letting the local AI handle this reduces human calendar friction substantially.</div>
+          </div>
+          <div class="field-pair">
+            <div class="field-label">Downsides</div>
+            <div class="field-value">Implementing recurrence rules mapping from JSON keys (frequency, daily, weekly) to native <code>EKRecurrenceRule</code> objects in Swift introduces code complexity.</div>
+          </div>
+        </div>
+      </article>
+
+      <!-- Idea 3 -->
+      <article class="idea-card" id="idea-3">
+        <div class="card-header">
+          <div class="idea-rank-title">
+            <span class="rank-pill">3</span>
+            <h3 class="idea-title">Offline Fallback Parser (Chrono-Node)</h3>
+          </div>
+          <div class="badges">
+            <span class="badge badge-high">Conf: 85%</span>
+            <span class="badge badge-low">Cx: Low</span>
+          </div>
+        </div>
+        <p class="idea-description">
+          <strong>Description:</strong> Integrates a lightweight Javascript date parsing library like <code>chrono-node</code> into <code>parse_query.ts</code>. If Ollama is offline or takes too long to respond, the coordinator automatically falls back to regex-based natural language parsing to ensure the workflow is still usable.
+        </p>
+
+        <div class="diagram-container">
+          <svg viewBox="0 0 700 200" width="700" height="200" xmlns="http://www.w3.org/2000/svg">
+            <rect x="10" y="10" width="680" height="180" rx="10" fill="#0c1017" stroke="#1f2633" stroke-width="2"/>
+            
+            <!-- TS Coordinator -->
+            <rect x="30" y="60" width="130" height="80" rx="6" fill="#161b22" stroke="#30363d"/>
+            <text x="40" y="90" fill="#ffffff" font-size="12" font-weight="bold">parse_query.ts</text>
+            <text x="40" y="110" fill="#8b949e" font-size="10">Checking Ollama...</text>
+            
+            <!-- Connection check path splits -->
+            <!-- Path A: Ollama Active -->
+            <path d="M 160 85 L 260 55" stroke="#10b981" stroke-width="1.5" />
+            <text x="175" y="65" fill="#10b981" font-size="9" font-weight="500">Active</text>
+            
+            <rect x="270" y="25" width="170" height="50" rx="6" fill="#0d1117" stroke="#10b981"/>
+            <text x="280" y="45" fill="#ffffff" font-size="11" font-weight="600">Local Ollama LLM</text>
+            <text x="280" y="60" fill="#9ca3af" font-size="9">Grammar-constrained JSON</text>
+            
+            <!-- Path B: Ollama Offline -->
+            <path d="M 160 115 L 260 145" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="3,3" />
+            <text x="175" y="140" fill="#ef4444" font-size="9" font-weight="500">Offline (Timeout)</text>
+            
+            <rect x="270" y="125" width="170" height="50" rx="6" fill="#0d1117" stroke="#ef4444"/>
+            <text x="280" y="145" fill="#ffffff" font-size="11" font-weight="600">Chrono-Node Fallback</text>
+            <text x="280" y="160" fill="#9ca3af" font-size="9">Regex Date Parser (Instant)</text>
+            
+            <!-- Merge Arrow -->
+            <path d="M 440 50 L 520 85" stroke="#3b82f6" stroke-width="1.5"/>
+            <path d="M 440 150 L 520 115" stroke="#3b82f6" stroke-width="1.5"/>
+            
+            <!-- Output -->
+            <rect x="530" y="70" width="130" height="60" rx="6" fill="#161b22" stroke="#3b82f6"/>
+            <text x="540" y="95" fill="#ffffff" font-size="11" font-weight="600">Structured Event</text>
+            <text x="540" y="110" fill="#9ca3af" font-size="9">Created successfully</text>
+          </svg>
+        </div>
+
+        <div class="idea-fields">
+          <div class="field-pair">
+            <div class="field-label">Basis</div>
+            <div class="field-value"><span class="basis-tag">direct:parse_query.ts#L96-106</span> (Strict single dependency on local port 11434 API generation; throws unhandled error if connection fails).</div>
+          </div>
+          <div class="field-pair">
+            <div class="field-label">Rationale</div>
+            <div class="field-value">If the Ollama process is sleeping, loading, or not started, the user faces workflow execution silence. A regex parser solves common relative date strings instantly with zero dependencies.</div>
+          </div>
+          <div class="field-pair">
+            <div class="field-label">Downsides</div>
+            <div class="field-value">Adds a package dependency (like <code>chrono-node</code>) to <code>package.json</code>, increasing the packaged <code>.alfredworkflow</code> zip bundle size.</div>
+          </div>
+        </div>
+      </article>
+
+      <!-- Idea 4 -->
+      <article class="idea-card" id="idea-4">
+        <div class="card-header">
+          <div class="idea-rank-title">
+            <span class="rank-pill">4</span>
+            <h3 class="idea-title">Auto-Select Calendar by Event Semantics</h3>
+          </div>
+          <div class="badges">
+            <span class="badge badge-high">Conf: 90%</span>
+            <span class="badge badge-low">Cx: Low</span>
+          </div>
+        </div>
+        <p class="idea-description">
+          <strong>Description:</strong> Updates the prompt guidelines in <code>parse_query.ts</code> to direct the LLM to select the most matching calendar name based on semantic analysis of the event title, rather than relying solely on slash parameters. E.g., "dentist appointment" automatically maps to the "Personal" calendar, while "sync with marketing team" routes to the work calendar.
+        </p>
+        <div class="idea-fields">
+          <div class="field-pair">
+            <div class="field-label">Basis</div>
+            <div class="field-value"><span class="basis-tag">direct:parse_query.ts#L21-27</span> (Hardcoded calendar mapping based on simple substring match rules on query input).</div>
+          </div>
+          <div class="field-pair">
+            <div class="field-label">Rationale</div>
+            <div class="field-value">Reduces manual typing friction for users since they don't have to remember to append <code>/work</code> or <code>/personal</code> tags to direct the event.</div>
+          </div>
+          <div class="field-pair">
+            <div class="field-label">Downsides</div>
+            <div class="field-value">The semantic classification requires the model to have clear reasoning about terms, which could have a margin of classification errors compared to explicit flags.</div>
+          </div>
+        </div>
+      </article>
+
+      <!-- Idea 5 -->
+      <article class="idea-card" id="idea-5">
+        <div class="card-header">
+          <div class="idea-rank-title">
+            <span class="rank-pill">5</span>
+            <h3 class="idea-title">Create Apple Reminders Directly (EKReminder)</h3>
+          </div>
+          <div class="badges">
+            <span class="badge badge-med">Conf: 80%</span>
+            <span class="badge badge-med">Cx: Medium</span>
+          </div>
+        </div>
+        <p class="idea-description">
+          <strong>Description:</strong> Expands the EventKit helper to manage reminders. If the user query starts with a reminder trigger (e.g. "todo buy groceries", "remind me to call John at 4pm"), the LLM flags the intent as `reminder` and the Swift helper creates an <code>EKReminder</code> instead of an <code>EKEvent</code> in the native Reminders app database.
+        </p>
+        <div class="idea-fields">
+          <div class="field-pair">
+            <div class="field-label">Basis</div>
+            <div class="field-value"><span class="basis-tag">direct:main.swift#L27</span> (Only queries and requests authorization for <code>EKCalendar</code> event types, completely ignoring EventKit's reminders database).</div>
+          </div>
+          <div class="field-pair">
+            <div class="field-label">Rationale</div>
+            <div class="field-value">Many quick capture notes are actually checklist items or reminders rather than scheduled calendar blocks. Providing a single unified search/add box for both increases utility.</div>
+          </div>
+          <div class="field-pair">
+            <div class="field-label">Downsides</div>
+            <div class="field-value">Requires requesting permission for both Events and Reminders from the user, which triggers a separate macOS permissions dialog.</div>
+          </div>
+        </div>
+      </article>
+
+      <!-- Idea 6 -->
+      <article class="idea-card" id="idea-6">
+        <div class="card-header">
+          <div class="idea-rank-title">
+            <span class="rank-pill">6</span>
+            <h3 class="idea-title">Immediate Mutation with "Undo" Banner</h3>
+          </div>
+          <div class="badges">
+            <span class="badge badge-med">Conf: 75%</span>
+            <span class="badge badge-high">Cx: High</span>
+          </div>
+        </div>
+        <p class="idea-description">
+          <strong>Description:</strong> Removes the multi-step confirmation phase in Alfred. The event is created in Apple Calendar immediately after hitting Enter. Simultaneously, a macOS desktop notification (or custom UI banner) is triggered with an "Undo" button. Clicking "Undo" invokes a delete command, making the interaction feel instant.
+        </p>
+        <div class="idea-fields">
+          <div class="field-pair">
+            <div class="field-label">Basis</div>
+            <div class="field-value"><span class="basis-tag">direct:info.plist</span> (Workflow relies on a conditional path requiring user confirmation selection in Alfred).</div>
+          </div>
+          <div class="field-pair">
+            <div class="field-label">Rationale</div>
+            <div class="field-value">Saves an entire interaction step, making calendar entry feel immediate. An undo action serves as a safety net if the AI misinterprets the text.</div>
+          </div>
+          <div class="field-pair">
+            <div class="field-label">Downsides</div>
+            <div class="field-value">Requires integrating or triggering AppleScript notifications with actionable buttons, or writing a custom notification daemon in Swift.</div>
+          </div>
+        </div>
+      </article>
+
+      <!-- Idea 7 -->
+      <article class="idea-card" id="idea-7">
+        <div class="card-header">
+          <div class="idea-rank-title">
+            <span class="rank-pill">7</span>
+            <h3 class="idea-title">Graceful Ollama Offline Error States</h3>
+          </div>
+          <div class="badges">
+            <span class="badge badge-high">Conf: 95%</span>
+            <span class="badge badge-low">Cx: Low</span>
+          </div>
+        </div>
+        <p class="idea-description">
+          <strong>Description:</strong> Adds validation checks to <code>parse_query.ts</code> for the Ollama connection status. If a connection error occurs, instead of throwing an exception, output a formatted Alfred JSON item telling the user "Ollama Offline" with a subtitle guide on how to launch it.
+        </p>
+        <div class="idea-fields">
+          <div class="field-pair">
+            <div class="field-label">Basis</div>
+            <div class="field-value"><span class="basis-tag">direct:parse_query.ts#L102-105</span> (Fails abruptly with an API error message that halts execution).</div>
+          </div>
+          <div class="field-pair">
+            <div class="field-label">Rationale</div>
+            <div class="field-value">Prevents a bad user experience where the Alfred workflow appears broken, hanging, or prints developer debug traces.</div>
+          </div>
+          <div class="field-pair">
+            <div class="field-label">Downsides</div>
+            <div class="field-value">Requires minor code changes to wrap fetch operations in error-capturing handlers.</div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section id="rejection-summary">
+      <h2>Rejection Summary</h2>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Idea Name</th>
+              <th>Reason for Rejection</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>Dynamic Calendar Auto-Discovery</td>
+              <td>Partially duplicative of other configuration/auto-select ideas. Can be solved with simple metadata scan.</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>Model Prewarming</td>
+              <td>Adds background daemon complexity relative to the minimal performance gain.</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>Detailed Apple Calendar Access Error in Alfred</td>
+              <td>Can be resolved as a minor sub-task of dynamic error states rather than a standalone product idea.</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>Swift-Only Parser Coordinator</td>
+              <td>Rewriting the Ollama integration and JSON validation in Swift increases implementation burden without adding functionality.</td>
+            </tr>
+            <tr>
+              <td>5</td>
+              <td>Auto-Detect Default Duration</td>
+              <td>Duplicates functionality that can be handled inside the prompt schema directly.</td>
+            </tr>
+            <tr>
+              <td>6</td>
+              <td>Auto-Extract Web Conferencing Links</td>
+              <td>Duplicates the location/notes/URL metadata extension idea.</td>
+            </tr>
+            <tr>
+              <td>7</td>
+              <td>Automated Doctor Tool</td>
+              <td>Low value for end-users compared to active runtime improvements.</td>
+            </tr>
+            <tr>
+              <td>8</td>
+              <td>Export to ICS / Google Calendar Links</td>
+              <td>Deviates from the native local-only Apple Calendar integration model.</td>
+            </tr>
+            <tr>
+              <td>9</td>
+              <td>Reframe Alfred UI as Editing Form</td>
+              <td>Alfred UI limitations make multi-field interactive forms clunky and slow.</td>
+            </tr>
+            <tr>
+              <td>10</td>
+              <td>Multi-Calendar Syncing and Conflict Resolution</td>
+              <td>Checks for conflicts can be done in the native Calendar app; adding it to script filter increases latency.</td>
+            </tr>
+            <tr>
+              <td>11</td>
+              <td>Multi-Architecture Pre-compiled Binary Release</td>
+              <td>Local compilation on install works reliably; pre-compiling adds release complexity.</td>
+            </tr>
+            <tr>
+              <td>12</td>
+              <td>Persistent Background IPC Daemon</td>
+              <td>Swift startup is fast enough that a daemon does not address the main Ollama latency bottleneck.</td>
+            </tr>
+            <tr>
+              <td>13</td>
+              <td>Automated CI/CD Release Packager on Actions</td>
+              <td>Devops task that does not improve workflow features.</td>
+            </tr>
+            <tr>
+              <td>14</td>
+              <td>Reusable Zod & Parse Modules as Packages</td>
+              <td>Premature optimization since the codebase is small.</td>
+            </tr>
+            <tr>
+              <td>15</td>
+              <td>Unified CLI for Both Parsing and Mutation</td>
+              <td>Separation between Swift and TypeScript is clean and easy to maintain.</td>
+            </tr>
+            <tr>
+              <td>16</td>
+              <td>Caching Calendars Locally</td>
+              <td>Performance gain is negligible compared to Ollama latency.</td>
+            </tr>
+            <tr>
+              <td>17</td>
+              <td>Git-Style Revision History SQLite Log</td>
+              <td>Adds significant storage overhead for a feature already handled by iCloud calendar backups.</td>
+            </tr>
+            <tr>
+              <td>18</td>
+              <td>Shell-Style Tab Completion</td>
+              <td>Not supported by Alfred's user interface model.</td>
+            </tr>
+            <tr>
+              <td>19</td>
+              <td>Browser-Style Omnibox Search</td>
+              <td>Duplicates search capabilities that can be invoked via default keywords.</td>
+            </tr>
+            <tr>
+              <td>20</td>
+              <td>Game Status Bar Capacity HUD</td>
+              <td>Visual capacity meter is out of scope for a minimalist input workflow.</td>
+            </tr>
+            <tr>
+              <td>21</td>
+              <td>Publisher-Subscriber Event Notifications</td>
+              <td>No active use cases for custom event broadcasting.</td>
+            </tr>
+            <tr>
+              <td>22</td>
+              <td>Task Queue Pipeline for Bulk Queries</td>
+              <td>Over-engineered for typical single-event entry use cases.</td>
+            </tr>
+            <tr>
+              <td>23</td>
+              <td>Bulk Calendar Clear and Re-scheduling</td>
+              <td>High risk of accidental data deletion on bulk schedule changes.</td>
+            </tr>
+            <tr>
+              <td>24</td>
+              <td>Voice Input Integration via local Whisper</td>
+              <td>Process spawning of Whisper models is too slow for real-time launcher use.</td>
+            </tr>
+            <tr>
+              <td>25</td>
+              <td>Auto-Find Free Calendar Slots</td>
+              <td>Checking availability is best handled by standard scheduling tools.</td>
+            </tr>
+            <tr>
+              <td>26</td>
+              <td>Run Without Local Ollama (Duplicate)</td>
+              <td>Duplicative of the offline fallback parsing idea.</td>
+            </tr>
+            <tr>
+              <td>27</td>
+              <td>Local API Server mode for local helper</td>
+              <td>Exposing calendar mutations via local network port is a security risk.</td>
+            </tr>
+            <tr>
+              <td>28</td>
+              <td>Full Calendar Browser in Alfred</td>
+              <td>Bloats the script filter with UI presentation, deviating from minimalist launcher focus.</td>
+            </tr>
+            <tr>
+              <td>29</td>
+              <td>Ollama Cloud API Fallback</td>
+              <td>Violates the strict offline, privacy-first design model of the workflow.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer>
+      <p class="composition-signal">Composed 2026-06-15T20:30Z by ce-ideate</p>
+    </footer>
+  </div>
+</body>
+</html>
