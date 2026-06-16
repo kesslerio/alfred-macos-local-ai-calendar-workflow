@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 import * as path from "path";
 import * as chrono from "chrono-node";
 
@@ -67,7 +67,9 @@ const toLocalISOString = (date: Date): string => {
 // Formats a rich subtitle for the Alfred confirmation item
 const formatAlfredSubtitle = (event: CalendarEvent): string => {
   const startStr = formatDisplayDate(event.start);
-  let parts = [`📅 ${startStr}`];
+  const endStr = formatDisplayDate(event.end);
+  // Show "start to end" so the parsed duration is visible before the event is created.
+  let parts = [event.end ? `📅 ${startStr} → ${endStr}` : `📅 ${startStr}`];
   
   if (event.recurrence) {
     const freq = event.recurrence.frequency;
@@ -93,21 +95,40 @@ const formatAlfredSubtitle = (event: CalendarEvent): string => {
   return parts.join(" ");
 };
 
+// Matches a slash flag only as a standalone, whitespace-delimited token so paths
+// or words like "/workout", "/workshop", or a URL's "/family" segment never trigger.
+const hasSlashFlag = (query: string, flag: string): boolean =>
+  new RegExp(`(?:^|\\s)/${flag}(?=\\s|$)`, "i").test(query);
+
 // Explicit calendar override check from query string
 function getExplicitCalendarOverride(query: string): string | null {
-  const lowerQuery = query.toLowerCase();
-  if (lowerQuery.includes("/work")) return "martin@shapescale.com";
-  if (lowerQuery.includes("/family")) return "mkesslerhk@googlemail.com";
-  if (lowerQuery.includes("/personal")) return "Personal";
+  if (hasSlashFlag(query, "work")) return "martin@shapescale.com";
+  if (hasSlashFlag(query, "family")) return "mkesslerhk@googlemail.com";
+  if (hasSlashFlag(query, "personal")) return "Personal";
   return null;
+}
+
+// Leading command verbs that signal a non-create intent in the offline fallback.
+const FALLBACK_INTENT_VERBS: Record<string, "delete" | "update" | "search"> = {
+  delete: "delete", remove: "delete", cancel: "delete",
+  update: "update", change: "update", reschedule: "update", move: "update", edit: "update", rename: "update",
+  search: "search", find: "search", show: "search", list: "search"
+};
+
+// Detects intent from the leading verb so a model outage cannot silently turn
+// "delete dentist appointment" into a newly created event.
+function detectFallbackIntent(query: string): "create" | "update" | "delete" | "search" {
+  const firstWord = query.trim().toLowerCase().split(/\s+/)[0] || "";
+  return FALLBACK_INTENT_VERBS[firstWord] || "create";
 }
 
 // Fallback parsing using chrono-node
 function parseWithChrono(query: string): CalendarEvent {
+  const intent = detectFallbackIntent(query);
   const parsedResults = chrono.parse(query);
   let startDate: Date;
   let endDate: Date;
-  
+
   if (parsedResults.length > 0 && parsedResults[0].start) {
     startDate = parsedResults[0].start.date();
     endDate = parsedResults[0].end ? parsedResults[0].end.date() : new Date(startDate.getTime() + 60 * 60 * 1000);
@@ -122,8 +143,26 @@ function parseWithChrono(query: string): CalendarEvent {
   if (parsedResults.length > 0) {
     title = query.replace(parsedResults[0].text, "");
   }
-  // Remove slash commands and clean double spaces
-  title = title.replace(/\/(work|family|personal)/gi, "").replace(/\s+/g, " ").trim();
+  // Remove standalone slash flags (not substrings like "/workout") and clean double spaces
+  title = title.replace(/(?:^|\s)\/(work|family|personal)(?=\s|$)/gi, " ").replace(/\s+/g, " ").trim();
+
+  // For non-create intents, drop the leading command verb so the event-matching
+  // search uses the event name rather than the command itself.
+  if (intent !== "create") {
+    const searchTitle = title
+      .replace(/^(delete|remove|cancel|update|change|reschedule|move|edit|rename|search|find|show|list)\s+/i, "")
+      .trim() || title;
+    return {
+      intent,
+      title: searchTitle,
+      start: toLocalISOString(startDate),
+      end: toLocalISOString(endDate),
+      calendar_hint: "Personal",
+      needs_confirmation: false,
+      search_query: searchTitle
+    };
+  }
+
   if (!title) {
     title = "New Event";
   }
@@ -251,7 +290,7 @@ Guidelines:
 // Search helper wrapper
 function searchCalendarEvents(query: string): any[] {
   try {
-    const output = execSync(`"${HELPER_PATH}" search --query "${query.replace(/"/g, '\\"')}"`, { encoding: "utf-8" });
+    const output = execFileSync(HELPER_PATH, ["search", "--query", query], { encoding: "utf-8" });
     return JSON.parse(output.trim());
   } catch (e) {
     return [];
