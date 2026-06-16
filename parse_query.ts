@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { execSync } from "child_process";
 import * as path from "path";
+import * as chrono from "chrono-node";
 
 // 1. Zod Schema
 const CalendarEventSchema = z.object({
@@ -10,7 +11,15 @@ const CalendarEventSchema = z.object({
   end: z.string(),
   calendar_hint: z.string(),
   needs_confirmation: z.boolean(),
-  search_query: z.string().optional()
+  search_query: z.string().optional(),
+  location: z.string().optional(),
+  url: z.string().optional(),
+  notes: z.string().optional(),
+  recurrence: z.object({
+    frequency: z.enum(["daily", "weekly", "monthly", "yearly"]),
+    interval: z.number().int().positive().optional(),
+    days_of_week: z.array(z.string()).optional()
+  }).optional()
 });
 
 type CalendarEvent = z.infer<typeof CalendarEventSchema>;
@@ -43,6 +52,92 @@ const formatDisplayDate = (isoStr: string): string => {
   }
 };
 
+// Formats date/time local ISO with timezone offset
+const toLocalISOString = (date: Date): string => {
+  const tzOffsetMs = date.getTimezoneOffset() * 60000;
+  const localDate = new Date(date.getTime() - tzOffsetMs);
+  const offsetMinutes = -date.getTimezoneOffset();
+  const offsetSign = offsetMinutes >= 0 ? "+" : "-";
+  const offsetHours = String(Math.floor(Math.abs(offsetMinutes) / 60)).padStart(2, "0");
+  const offsetMins = String(Math.abs(offsetMinutes) % 60).padStart(2, "0");
+  const tzOffset = `${offsetSign}${offsetHours}:${offsetMins}`;
+  return localDate.toISOString().slice(0, -5) + tzOffset;
+};
+
+// Formats a rich subtitle for the Alfred confirmation item
+const formatAlfredSubtitle = (event: CalendarEvent): string => {
+  const startStr = formatDisplayDate(event.start);
+  let parts = [`📅 ${startStr}`];
+  
+  if (event.recurrence) {
+    const freq = event.recurrence.frequency;
+    const interval = event.recurrence.interval || 1;
+    let freqLabel = freq.charAt(0).toUpperCase() + freq.slice(1);
+    if (interval > 1) {
+      freqLabel = `Every ${interval} ${freq === 'daily' ? 'days' : freq === 'weekly' ? 'weeks' : freq === 'monthly' ? 'months' : 'years'}`;
+    }
+    parts.push(`(${freqLabel})`);
+  }
+  
+  if (event.location) {
+    parts.push(`📍 ${event.location}`);
+  }
+  
+  if (event.url) {
+    parts.push(`🔗 ${event.url}`);
+  }
+  
+  const calName = MAP_CALENDAR(event.calendar_hint);
+  parts.push(`📂 ${calName}`);
+  
+  return parts.join(" ");
+};
+
+// Explicit calendar override check from query string
+function getExplicitCalendarOverride(query: string): string | null {
+  const lowerQuery = query.toLowerCase();
+  if (lowerQuery.includes("/work")) return "martin@shapescale.com";
+  if (lowerQuery.includes("/family")) return "mkesslerhk@googlemail.com";
+  if (lowerQuery.includes("/personal")) return "Personal";
+  return null;
+}
+
+// Fallback parsing using chrono-node
+function parseWithChrono(query: string): CalendarEvent {
+  const parsedResults = chrono.parse(query);
+  let startDate: Date;
+  let endDate: Date;
+  
+  if (parsedResults.length > 0 && parsedResults[0].start) {
+    startDate = parsedResults[0].start.date();
+    endDate = parsedResults[0].end ? parsedResults[0].end.date() : new Date(startDate.getTime() + 60 * 60 * 1000);
+  } else {
+    startDate = new Date();
+    startDate.setDate(startDate.getDate() + 1);
+    startDate.setHours(9, 0, 0, 0);
+    endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+  }
+
+  let title = query;
+  if (parsedResults.length > 0) {
+    title = query.replace(parsedResults[0].text, "");
+  }
+  // Remove slash commands and clean double spaces
+  title = title.replace(/\/(work|family|personal)/gi, "").replace(/\s+/g, " ").trim();
+  if (!title) {
+    title = "New Event";
+  }
+
+  return {
+    intent: "create",
+    title,
+    start: toLocalISOString(startDate),
+    end: toLocalISOString(endDate),
+    calendar_hint: "Personal",
+    needs_confirmation: false
+  };
+}
+
 async function parseWithOllama(query: string, modelName: string): Promise<CalendarEvent> {
   const now = new Date();
   const offsetMinutes = -now.getTimezoneOffset();
@@ -64,12 +159,25 @@ Guidelines:
    - If the query contains /personal -> calendar_hint is "Personal"
    - If the query contains /work -> calendar_hint is "martin@shapescale.com"
    - If the query contains /family -> calendar_hint is "mkesslerhk@googlemail.com"
-   - Default is "Personal".
+   - If NO calendar slash flag is explicitly present in the query, predict the calendar_hint based on the semantics of the title:
+     * Use "martin@shapescale.com" for work, corporate tasks, software development, code reviews, meetings, client syncs, business, or ShapeScale related matters.
+     * Use "mkesslerhk@googlemail.com" for family, relatives, parents, spouse, kids, home repairs, or family dinners.
+     * Use "Personal" for personal appointments (dentist, doctor, gym, haircut, personal hobbies, personal tasks).
+     * Default fallback is "Personal".
 2. Event Title:
    - Extract the core summary as the title.
    - Clean the title: DO NOT include the calendar flags (like /personal, /work, /family) or time/duration phrases (like "tomorrow", "30 minutes", "5pm") in the event title.
 3. Fallback start time:
-   - If no start time (hour/minute) is specified, set the start time to 09:00:00 on the target date.`;
+   - If no start time (hour/minute) is specified, set the start time to 09:00:00 on the target date.
+4. Rich metadata:
+   - Extract "location" (e.g. room, address, zoom/google meet URL) if specified.
+   - Extract "url" if an event web link or zoom link is specified.
+   - Extract "notes" for extra context or description details from the query.
+5. Recurrence rules:
+   - If the query specifies a repeating event (e.g. "every monday", "weekly", "daily", "monthly"), extract recurrence:
+     * "frequency": daily, weekly, monthly, or yearly.
+     * "interval": 1 (default), 2 (every other week/month), etc.
+     * "days_of_week": array of lowercase weekdays (e.g. ["monday", "wednesday"]) if specified.`;
 
   const requestBody = {
     model: modelName,
@@ -84,7 +192,22 @@ Guidelines:
         end: { type: "string" },
         calendar_hint: { type: "string" },
         needs_confirmation: { type: "boolean" },
-        search_query: { type: "string" }
+        search_query: { type: "string" },
+        location: { type: "string" },
+        url: { type: "string" },
+        notes: { type: "string" },
+        recurrence: {
+          type: "object",
+          properties: {
+            frequency: { type: "string", enum: ["daily", "weekly", "monthly", "yearly"] },
+            interval: { type: "integer" },
+            days_of_week: {
+              type: "array",
+              items: { type: "string" }
+            }
+          },
+          required: ["frequency"]
+        }
       },
       required: ["intent", "title", "start", "end", "calendar_hint", "needs_confirmation"]
     },
@@ -93,25 +216,36 @@ Guidelines:
     }
   };
 
-  const response = await fetch("http://localhost:11434/api/generate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(requestBody)
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 seconds timeout
 
-  if (!response.ok) {
-    throw new Error(`Ollama API error: ${response.statusText}`);
-  }
+  try {
+    const response = await fetch("http://localhost:11434/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
+      signal: controller.signal
+    });
 
-  const resJson = (await response.json()) as { response?: string; thinking?: string };
-  let responseText = (resJson.response || "").trim();
-  if (!responseText && resJson.thinking) {
-    responseText = resJson.thinking.trim();
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`Ollama API error: ${response.statusText}`);
+    }
+
+    const resJson = (await response.json()) as { response?: string; thinking?: string };
+    let responseText = (resJson.response || "").trim();
+    if (!responseText && resJson.thinking) {
+      responseText = resJson.thinking.trim();
+    }
+    
+    // Parse and validate with Zod
+    const rawObj = JSON.parse(responseText);
+    return CalendarEventSchema.parse(rawObj);
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
   }
-  
-  // Parse and validate with Zod
-  const rawObj = JSON.parse(responseText);
-  return CalendarEventSchema.parse(rawObj);
 }
 
 // Search helper wrapper
@@ -167,13 +301,26 @@ async function run() {
     // STATE 2: Analyze
     if (action === "analyze") {
       const targetQuery = process.env.query || query;
-      const event = await parseWithOllama(targetQuery, modelName);
+      let event: CalendarEvent;
+      
+      try {
+        event = await parseWithOllama(targetQuery, modelName);
+      } catch (e) {
+        // Fallback to offline chrono parsing
+        event = parseWithChrono(targetQuery);
+      }
+
+      // Explicit override check
+      const explicitCal = getExplicitCalendarOverride(targetQuery);
+      if (explicitCal) {
+        event.calendar_hint = explicitCal;
+      }
 
       if (event.intent === "create") {
         printAlfredJSON([
           {
-            title: `Confirm: Add "${event.title}"`,
-            subtitle: `📅 ${formatDisplayDate(event.start)} to ${formatDisplayDate(event.end)} on "${MAP_CALENDAR(event.calendar_hint)}". Press Enter.`,
+            title: event.needs_confirmation ? `Confirm: Add "${event.title}"` : `Add "${event.title}"`,
+            subtitle: `${event.needs_confirmation ? "" : "⚡ Quick Add: "}${formatAlfredSubtitle(event)}`,
             arg: "confirm_create",
             valid: true,
             variables: {
@@ -181,7 +328,13 @@ async function run() {
               event_title: event.title,
               event_start: event.start,
               event_end: event.end,
-              event_calendar: MAP_CALENDAR(event.calendar_hint)
+              event_calendar: MAP_CALENDAR(event.calendar_hint),
+              event_location: event.location || "",
+              event_url: event.url || "",
+              event_notes: event.notes || "",
+              event_recurrence_frequency: event.recurrence?.frequency || "",
+              event_recurrence_interval: event.recurrence?.interval ? String(event.recurrence.interval) : "",
+              event_recurrence_days: event.recurrence?.days_of_week ? event.recurrence.days_of_week.join(",") : ""
             }
           }
         ]);
@@ -204,7 +357,13 @@ async function run() {
                 event_title: event.title,
                 event_start: event.start,
                 event_end: event.end,
-                event_calendar: MAP_CALENDAR(event.calendar_hint)
+                event_calendar: MAP_CALENDAR(event.calendar_hint),
+                event_location: event.location || "",
+                event_url: event.url || "",
+                event_notes: event.notes || "",
+                event_recurrence_frequency: event.recurrence?.frequency || "",
+                event_recurrence_interval: event.recurrence?.interval ? String(event.recurrence.interval) : "",
+                event_recurrence_days: event.recurrence?.days_of_week ? event.recurrence.days_of_week.join(",") : ""
               }
             }
           ]);
@@ -224,7 +383,13 @@ async function run() {
             event_title: event.title,
             event_start: event.start,
             event_end: event.end,
-            event_calendar: MAP_CALENDAR(event.calendar_hint)
+            event_calendar: MAP_CALENDAR(event.calendar_hint),
+            event_location: event.location || "",
+            event_url: event.url || "",
+            event_notes: event.notes || "",
+            event_recurrence_frequency: event.recurrence?.frequency || "",
+            event_recurrence_interval: event.recurrence?.interval ? String(event.recurrence.interval) : "",
+            event_recurrence_days: event.recurrence?.days_of_week ? event.recurrence.days_of_week.join(",") : ""
           }
         }));
         printAlfredJSON(items);
@@ -241,10 +406,26 @@ async function run() {
       const end = process.env.event_end;
       const cal = process.env.event_calendar;
 
+      const loc = process.env.event_location || "";
+      const url = process.env.event_url || "";
+      const notes = process.env.event_notes || "";
+      const recFreq = process.env.event_recurrence_frequency || "";
+      const recInterval = process.env.event_recurrence_interval || "";
+      const recDays = process.env.event_recurrence_days || "";
+
+      // Format a rich subtitle for the update confirmation card
+      let parts = [`📅 New: ${formatDisplayDate(start || "")}`];
+      if (recFreq) {
+        parts.push(`(${recFreq.charAt(0).toUpperCase() + recFreq.slice(1)})`);
+      }
+      if (loc) parts.push(`📍 ${loc}`);
+      if (url) parts.push(`🔗 ${url}`);
+      parts.push(`📂 ${cal}`);
+
       printAlfredJSON([
         {
           title: `Confirm Update: "${oldTitle}" -> "${newTitle}"`,
-          subtitle: `📅 New: ${formatDisplayDate(start || "")} on "${cal}". Press Enter.`,
+          subtitle: parts.join(" "),
           arg: "confirm_update",
           valid: true,
           variables: {
@@ -253,7 +434,13 @@ async function run() {
             event_title: newTitle,
             event_start: start,
             event_end: end,
-            event_calendar: cal
+            event_calendar: cal,
+            event_location: loc,
+            event_url: url,
+            event_notes: notes,
+            event_recurrence_frequency: recFreq,
+            event_recurrence_interval: recInterval,
+            event_recurrence_days: recDays
           }
         }
       ]);
