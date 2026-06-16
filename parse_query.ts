@@ -108,6 +108,35 @@ function getExplicitCalendarOverride(query: string): string | null {
   return null;
 }
 
+const WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+
+// Deterministic recurrence detection. Small local models reliably miss
+// named-weekday recurrence ("every monday"), so this backstop fills the
+// recurrence object from the query when the model omits it.
+function extractRecurrence(query: string): CalendarEvent["recurrence"] | undefined {
+  const q = query.toLowerCase();
+  const hasEvery = /\b(every|each)\b/.test(q);
+  const everyOther = /\bevery other\b/.test(q) || /\bbi-?weekly\b/.test(q);
+  const days = WEEKDAYS.filter(d => new RegExp(`\\b${d}s?\\b`).test(q));
+
+  let frequency: "daily" | "weekly" | "monthly" | "yearly" | undefined;
+  if (/\bdaily\b/.test(q) || (hasEvery && /\bday\b/.test(q))) frequency = "daily";
+  else if (/\bweekly\b/.test(q) || /\bbi-?weekly\b/.test(q) || (hasEvery && /\bweek\b/.test(q))) frequency = "weekly";
+  else if (/\bmonthly\b/.test(q) || (hasEvery && /\bmonth\b/.test(q))) frequency = "monthly";
+  else if (/\b(yearly|annually)\b/.test(q) || (hasEvery && /\b(year|annual)\b/.test(q))) frequency = "yearly";
+  else if (days.length > 0 && hasEvery) frequency = "weekly"; // "every monday"
+
+  if (!frequency) return undefined;
+  const recurrence: NonNullable<CalendarEvent["recurrence"]> = {
+    frequency,
+    interval: everyOther ? 2 : 1
+  };
+  if (frequency === "weekly" && days.length > 0) {
+    recurrence.days_of_week = days;
+  }
+  return recurrence;
+}
+
 // Leading command verbs that signal a non-create intent in the offline fallback.
 const FALLBACK_INTENT_VERBS: Record<string, "delete" | "update" | "search"> = {
   delete: "delete", remove: "delete", cancel: "delete",
@@ -211,12 +240,18 @@ Guidelines:
 4. Rich metadata:
    - Extract "location" (e.g. room, address, zoom/google meet URL) if specified.
    - Extract "url" if an event web link or zoom link is specified.
-   - Extract "notes" for extra context or description details from the query.
-5. Recurrence rules:
-   - If the query specifies a repeating event (e.g. "every monday", "weekly", "daily", "monthly"), extract recurrence:
+   - Extract "notes" ONLY for genuine extra description text. Leave "notes" empty if there is nothing extra.
+   - NEVER place calendar slash flags (/work, /personal, /family) or time/duration phrases into "notes", "title", "location", or "url". They are routing/scheduling directives, not content.
+5. Recurrence rules (IMPORTANT — do not skip):
+   - If the query contains ANY repetition phrase ("every", "each", "weekly", "daily", "monthly", "yearly", "annually", "every other"), you MUST populate the "recurrence" object. Do not omit it.
      * "frequency": daily, weekly, monthly, or yearly.
-     * "interval": 1 (default), 2 (every other week/month), etc.
-     * "days_of_week": array of lowercase weekdays (e.g. ["monday", "wednesday"]) if specified.`;
+     * "interval": 1 (default), or 2 for "every other"/"biweekly", etc.
+     * "days_of_week": array of lowercase weekdays (e.g. ["monday", "wednesday"]) when specific days are named.
+   - Examples:
+     * "standup every monday 10am" -> recurrence: { "frequency": "weekly", "interval": 1, "days_of_week": ["monday"] }
+     * "gym every other day" -> recurrence: { "frequency": "daily", "interval": 2 }
+     * "rent due monthly" -> recurrence: { "frequency": "monthly", "interval": 1 }
+   - If the query is a one-time event with no repetition phrase, omit "recurrence" entirely.`;
 
   const requestBody = {
     model: modelName,
@@ -357,6 +392,28 @@ async function run() {
       const explicitCal = getExplicitCalendarOverride(targetQuery);
       if (explicitCal) {
         event.calendar_hint = explicitCal;
+      }
+
+      // Recurrence handling applies only to new events. For update/delete/search
+      // the title is a search key / model-chosen new name and a frequency word
+      // (e.g. "reschedule the weekly standup") is an identifier, not a directive —
+      // injecting recurrence or stripping the title there would corrupt the request.
+      if (event.intent === "create") {
+        // Deterministic recurrence backstop for repetition phrases the model missed.
+        if (!event.recurrence) {
+          const recurrence = extractRecurrence(targetQuery);
+          if (recurrence) {
+            event.recurrence = recurrence;
+          }
+        }
+        // Strip leftover recurrence keywords from the model-produced title.
+        if (event.recurrence) {
+          event.title = event.title
+            .replace(/\b(every other|every|each)\b/gi, " ")
+            .replace(/\b(daily|weekly|monthly|yearly|annually|bi-?weekly)\b/gi, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+        }
       }
 
       if (event.intent === "create") {
