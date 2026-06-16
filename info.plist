@@ -96,7 +96,7 @@
 		</array>
 	</dict>
 	<key>createdby</key>
-	<string>Martin Kessler</string>
+	<string>kesslerIO</string>
 	<key>description</key>
 	<string>Add, update, or delete Apple Calendar events using local models on Ollama.</string>
 	<key>disabled</key>
