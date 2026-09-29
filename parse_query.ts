@@ -326,7 +326,113 @@ Guidelines:
   }
 }
 
-// Search helper wrapper
+// --- John/Ofus (Kalliope / M.A.M.A) remote fallback ---
+// When no local LLM (Ollama) is available, try John/Ofus's Kalliope
+// OpenAI-compatible endpoint before falling back to offline chrono parsing.
+const JOHN_OFUS_BASE_URL = process.env.JOHN_OFUS_BASE_URL || "http://100.124.155.99:4000/v1";
+const JOHN_OFUS_MODEL = process.env.JOHN_OFUS_MODEL || "qwen3.8-flash-next";
+
+function getJohnOfusApiKey(): string {
+  // The key lives in ~/.zshenv (VOICEINK_MAMA_API_KEY). Alfred's script action
+  // may not source .zshenv, so read it explicitly if not already in env.
+  if (process.env.VOICEINK_MAMA_API_KEY) return process.env.VOICEINK_MAMA_API_KEY;
+  try {
+    const { execSync } = require("child_process");
+    const out = execSync("grep -oP '^export VOICEINK_MAMA_API_KEY=\\K.*' ~/.zshenv 2>/dev/null", { encoding: "utf-8", timeout: 3000 }).trim();
+    if (out) return out;
+  } catch (_) { /* ignore */ }
+  return "";
+}
+
+async function parseWithJohnOfus(query: string): Promise<CalendarEvent> {
+  const now = new Date();
+  const offsetMinutes = -now.getTimezoneOffset();
+  const offsetSign = offsetMinutes >= 0 ? "+" : "-";
+  const offsetHours = String(Math.floor(Math.abs(offsetMinutes) / 60)).padStart(2, "0");
+  const offsetMins = String(Math.abs(offsetMinutes) % 60).padStart(2, "0");
+  const tzOffset = `${offsetSign}${offsetHours}:${offsetMins}`;
+
+  const tzOffsetMs = now.getTimezoneOffset() * 60000;
+  const localISOTime = (new Date(now.getTime() - tzOffsetMs)).toISOString().slice(0, -5) + tzOffset;
+  const currentDay = now.toLocaleDateString("en-US", { weekday: "long" });
+
+  const systemPrompt = `You are a calendar parsing assistant. Your task is to parse a natural language query into a structured JSON event block.
+Current local date/time is: ${localISOTime} (Day of week: ${currentDay})
+
+Guidelines:
+1. Mappings for calendar_hint:
+   - If the query contains /personal -> calendar_hint is "Personal"
+   - If the query contains /work -> calendar_hint is "martin@shapescale.com"
+   - If the query contains /family -> calendar_hint is "mkesslerhk@googlemail.com"
+   - If NO calendar slash flag is explicitly present in the query, predict the calendar_hint based on the semantics of the title:
+     * Use "martin@shapescale.com" for work, corporate tasks, software development, code reviews, meetings, client syncs, business, or ShapeScale related matters.
+     * Use "mkesslerhk@googlemail.com" for family, relatives, parents, spouse, kids, home repairs, or family dinners.
+     * Use "Personal" for personal appointments (dentist, doctor, gym, haircut, personal hobbies, personal tasks).
+     * Default fallback is "Personal".
+2. Event Title:
+   - Extract the core summary as the title.
+   - Clean the title: DO NOT include the calendar flags (like /personal, /work, /family) or time/duration phrases (like "tomorrow", "30 minutes", "5pm") in the event title.
+3. Fallback start time:
+   - If no start time (hour/minute) is specified, set the start time to 09:00:00 on the target date.
+4. Rich metadata:
+   - Extract "location" (e.g. room, address, zoom/google meet URL) if specified.
+   - Extract "url" if an event web link or zoom link is specified.
+   - Extract "notes" ONLY for genuine extra description text. Leave "notes" empty if there is nothing extra.
+   - NEVER place calendar slash flags (/work, /personal, /family) or time/duration phrases into "notes", "title", "location", or "url". They are routing/scheduling directives, not content.
+5. Recurrence rules (IMPORTANT — do not skip):
+   - If the query contains ANY repetition phrase ("every", "each", "weekly", "daily", "monthly", "yearly", "annually", "every other"), you MUST populate the "recurrence" object. Do not omit it.
+     * "frequency": daily, weekly, monthly, or yearly.
+     * "interval": 1 (default), or 2 for "every other"/"biweekly", etc.
+     * "days_of_week": array of lowercase weekdays (e.g. ["monday", "wednesday"]) when specific days are named.
+   - If the query is a one-time event with no repetition phrase, omit "recurrence" entirely.`;
+
+  const userPrompt = `Query: "${query}"\nRespond ONLY with the JSON object. No markdown fences, no commentary.`;
+
+  const apiKey = getJohnOfusApiKey();
+  if (!apiKey) {
+    throw new Error("John/Ofus API key not available (VOICEINK_MAMA_API_KEY missing)");
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const response = await fetch(`${JOHN_OFUS_BASE_URL}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: JOHN_OFUS_MODEL,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        stream: false,
+        temperature: 0.0,
+        max_tokens: 1024,
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`John/Ofus API error: ${response.status} ${response.statusText}`);
+    }
+
+    const resJson = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
+    const responseText = (resJson.choices?.[0]?.message?.content || "").trim();
+    if (!responseText) throw new Error("John/Ofus returned empty response");
+
+    const rawObj = JSON.parse(responseText);
+    return CalendarEventSchema.parse(rawObj);
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
+  }
+}
 function searchCalendarEvents(query: string): any[] {
   try {
     const output = execFileSync(HELPER_PATH, ["search", "--query", query], { encoding: "utf-8" });
@@ -380,12 +486,21 @@ async function run() {
     if (action === "analyze") {
       const targetQuery = process.env.query || query;
       let event: CalendarEvent;
-      
+      let source = "offline";
+
       try {
         event = await parseWithOllama(targetQuery, modelName);
+        source = "local (Ollama)";
       } catch (e) {
-        // Fallback to offline chrono parsing
-        event = parseWithChrono(targetQuery);
+        // Local LLM (Ollama) unavailable — try John/Ofus remote before offline.
+        try {
+          event = await parseWithJohnOfus(targetQuery);
+          source = "John/Ofus (remote)";
+        } catch (e2) {
+          event = parseWithChrono(targetQuery);
+          source = "offline (chrono)";
+          console.error(`[parse_query] Ollama failed: ${e}; John/Ofus failed: ${e2}; using offline chrono parsing.`);
+        }
       }
 
       // Explicit override check
