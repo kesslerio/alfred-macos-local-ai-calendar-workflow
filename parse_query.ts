@@ -433,6 +433,8 @@ Guidelines:
     throw error;
   }
 }
+
+// Search helper wrapper
 function searchCalendarEvents(query: string): any[] {
   try {
     const output = execFileSync(HELPER_PATH, ["search", "--query", query], { encoding: "utf-8" });
@@ -501,6 +503,10 @@ async function run() {
           source = "offline (chrono)";
           console.error(`[parse_query] Ollama failed: ${e}; John/Ofus failed: ${e2}; using offline chrono parsing.`);
         }
+      }
+
+      if (source !== "local (Ollama)") {
+        console.warn(`[parse_query] fallback source: ${source}`);
       }
 
       // Explicit override check
