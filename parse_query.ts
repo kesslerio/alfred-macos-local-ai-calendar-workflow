@@ -326,21 +326,36 @@ Guidelines:
   }
 }
 
-// --- John/Ofus (Kalliope / M.A.M.A) remote fallback ---
-// When no local LLM (Ollama) is available, try John/Ofus's Kalliope
-// OpenAI-compatible endpoint before falling back to offline chrono parsing.
-const JOHN_OFUS_BASE_URL = process.env.JOHN_OFUS_BASE_URL || "http://100.124.155.99:4000/v1";
+// --- John/Ofus direct remote fallback ---
+// When no local LLM (Ollama) is available, try John/Ofus's DIRECT vLLM
+// endpoint (qwen3.8-flash-next) before falling back to offline chrono.
+// The Kalliope router (100.124.155.99:4000) rejects this model for
+// interactive clients ("Non-Ornith models are maintenance-only") and defers
+// to this direct John/Ofus route, so we point here rather than at the router.
+const JOHN_OFUS_BASE_URL = process.env.JOHN_OFUS_BASE_URL || "http://john:8888/v1";
 const JOHN_OFUS_MODEL = process.env.JOHN_OFUS_MODEL || "qwen3.8-flash-next";
 
 function getJohnOfusApiKey(): string {
-  // The key lives in ~/.zshenv (VOICEINK_MAMA_API_KEY). Alfred's script action
-  // may not source .zshenv, so read it explicitly if not already in env.
+  // Alfred's script action may not source .zshenv, so read the key
+  // explicitly if it is not already in the environment.
+  if (process.env.JOHN_OFUS_API_KEY) return process.env.JOHN_OFUS_API_KEY;
   if (process.env.VOICEINK_MAMA_API_KEY) return process.env.VOICEINK_MAMA_API_KEY;
   try {
-    const { execSync } = require("child_process");
-    const out = execSync("grep -oP '^export VOICEINK_MAMA_API_KEY=\\K.*' ~/.zshenv 2>/dev/null", { encoding: "utf-8", timeout: 3000 }).trim();
-    if (out) return out;
-  } catch (_) { /* ignore */ }
+    const fs = require("fs");
+    const os = require("os");
+    const line = fs
+      .readFileSync(os.homedir() + "/.zshenv", "utf8")
+      .split("\n")
+      .find((l) => l.startsWith("export VOICEINK_MAMA_API_KEY="));
+    if (line) {
+      return line
+        .replace("export VOICEINK_MAMA_API_KEY=", "")
+        .trim()
+        .replace(/^["']|["']$/g, "");
+    }
+  } catch (_) {
+    /* ignore */
+  }
   return "";
 }
 
