@@ -1,12 +1,12 @@
 # 📅 Local AI Calendar (Alfred 5 Workflow)
 
-An ultra-fast, privacy-first natural language calendar assistant for Alfred 5. It parses calendar instructions using a local LLM in Ollama and interacts directly with the macOS Calendar database using Apple's official `EventKit` framework.
+An ultra-fast, privacy-first natural language calendar assistant for Alfred 5. It parses calendar instructions with your local LLM fleet (TensorFold / Splash / MTPLX) — falling back to the M.A.M.A remote route when no local route is up — and interacts directly with the macOS Calendar database using Apple's official `EventKit` framework.
 
 ## 🚀 Features
 
-* **🏎️ Low Latency:** Parses events in ~2-3 seconds (warm) by leveraging Ollama's schema-constrained structured output (skipping heavy thinking token generations).
+* **🏎️ Low Latency:** Parses in ~1–2s on the M.A.M.A remote route (~15–20s on a local 27B), with thinking tokens disabled so the model emits the JSON directly instead of reasoning at length.
 * **🧠 High Accuracy:** Resolves relative times (like "tomorrow 5pm" or "next Monday") relative to your active system clock and timezone.
-* **🛡️ Privacy-First:** Everything runs 100% locally. No calendar history or events are ever sent to external APIs.
+* **🛡️ Privacy-First:** Prefers your local fleet routes; the remote M.A.M.A fallback carries only the single calendar query (never your calendar history or events).
 * **⚡ EventKit Backend:** Uses a compiled Swift helper to interact directly with Apple Calendar, ensuring robust support for creating, searching, updating, and deleting events without slow AppleScript.
 * **🔄 Interactive Confirmation Loop:** Uses Alfred variables to show event candidates and confirmation states before final mutations.
 
@@ -15,12 +15,13 @@ An ultra-fast, privacy-first natural language calendar assistant for Alfred 5. I
 ## 📋 Requirements
 
 1. **Alfred 5** (with Powerpack to run workflows).
-2. **[Ollama](https://ollama.com/)** running locally.
-3. **[Bun](https://bun.sh/)** installed for fast TypeScript execution.
-4. **Calendar Model:** We recommend `gemma4:12b` for the best parsing accuracy (the default). For lower latency on constrained hardware, `qwen3.5:4b` is a faster but less accurate alternative:
-   ```bash
-   ollama pull gemma4:12b
-   ```
+2. **[Bun](https://bun.sh/)** installed for fast TypeScript execution.
+3. **A calendar LLM route** — the workflow probes in order and uses the first that answers:
+   - **Local fleet:** TensorFold (`http://127.0.0.1:8300/v1`), Splash (`:8100`), MTPLX (`:8201`) — same routes as `voiceink_cleanup.py`, so the same `VOICEINK_*` env overrides apply.
+   - **M.A.M.A remote:** `qwen3.8-flash-next` on the direct John/Ofus vLLM endpoint (`http://john:8888/v1`, Tailscale hostname `john`) — the Kalliope router (`100.124.155.99:4000`) defers interactive traffic to this direct route.
+   - **Offline:** `chrono-node` rule parsing, always available with no network.
+
+   Overrides: `VOICEINK_TENSORFOLD_BASE_URL`, `VOICEINK_SPLASH_BASE_URL`, `VOICEINK_MTPLX_BASE_URL`, `JOHN_OFUS_BASE_URL`, `JOHN_OFUS_MODEL`, and `JOHN_OFUS_API_KEY` / `VOICEINK_MAMA_API_KEY` (remote key, read from `~/.zshenv` if unset).
 
 ---
 
@@ -28,7 +29,7 @@ An ultra-fast, privacy-first natural language calendar assistant for Alfred 5. I
 
 1. Download the latest `.alfredworkflow` package from the [Releases](https://github.com/kesslerio/alfred-macos-local-ai-calendar-workflow/releases) page.
 2. Double-click the downloaded file to import it into Alfred.
-3. Open Alfred Preferences, click on the **Local AI Calendar** workflow, and configure your preferred **Ollama Model** (defaults to `gemma4:12b`).
+3. Open Alfred Preferences and make sure at least one route is reachable: a local fleet route (TensorFold/Splash/MTPLX) or the M.A.M.A remote key in `~/.zshenv`. The workflow auto-selects the best route.
 
 ---
 

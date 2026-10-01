@@ -98,7 +98,7 @@
 	<key>createdby</key>
 	<string>kesslerIO</string>
 	<key>description</key>
-	<string>Add, update, or delete Apple Calendar events using local models on Ollama.</string>
+	<string>Add, update, or delete Apple Calendar events using your local LLM fleet (TensorFold / Splash / MTPLX), with a M.A.M.A remote fallback.</string>
 	<key>disabled</key>
 	<false/>
 	<key>name</key>
@@ -294,7 +294,7 @@ bun run execute_mutation.ts</string>
 		</dict>
 	</array>
 	<key>readme</key>
-	<string>Interactive calendar management using Ollama schema-constrained parsing and Swift EventKit mutations.
+	<string>Interactive calendar management using LLM-fleet parsing (TensorFold / Splash / MTPLX) with a M.A.M.A remote fallback and Swift EventKit mutations.
 
 Usage:
   cal [query] [flag]
@@ -351,27 +351,6 @@ Flags:
 	</dict>
 	<key>userconfigurationconfig</key>
 	<array>
-		<dict>
-			<key>config</key>
-			<dict>
-				<key>default</key>
-				<string>gemma4:12b</string>
-				<key>placeholder</key>
-				<string></string>
-				<key>required</key>
-				<true/>
-				<key>trim</key>
-				<true/>
-			</dict>
-			<key>description</key>
-			<string>The Ollama model tag to use for natural language parsing (e.g. gemma4:12b, qwen3.5:4b).</string>
-			<key>label</key>
-			<string>Ollama Model</string>
-			<key>type</key>
-			<string>textfield</string>
-			<key>variable</key>
-			<string>OLLAMA_MODEL</string>
-		</dict>
 	</array>
 	<key>version</key>
 	<string>2.0.0</string>
