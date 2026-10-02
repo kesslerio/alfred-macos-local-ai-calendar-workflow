@@ -415,8 +415,12 @@ async function parseWithOpenAI(
 }
 
 // Use the detected local fleet route with its own model.
+// 45s timeout: the only local route that's normally up is the heavy
+// TensorFold-27B, which needs ~25-30s for a full parse; a down route fails
+// the /models probe in ~2s, and a stuck route still falls through to the
+// fast M.A.M.A remote.
 function parseWithLocal(backend: { base_url: string; model: string }, query: string): Promise<CalendarEvent> {
-  return parseWithOpenAI(backend.base_url, backend.model, query, "", 30000);
+  return parseWithOpenAI(backend.base_url, backend.model, query, "", 45000);
 }
 
 // M.A.M.A remote: qwen3.8-flash-next on the direct John/Ofus vLLM endpoint.
