@@ -217,11 +217,13 @@ function parseWithChrono(query: string): CalendarEvent {
 // LLM route is unreachable, drop to offline chrono parsing.
 //
 // Local route endpoints mirror the voiceink fleet so the same VOICEINK_*
-// overrides apply everywhere.
+// overrides apply everywhere. Splash is probed first: it serves the
+// Qwen3.6-35B-A3B MoE (~1s per parse) while TensorFold's dense 27B needs
+// ~25-30s, so for interactive calendar parsing speed wins.
 
 const LOCAL_ROUTES: Array<{ name: string; base_url: string }> = [
-  { name: "tensorfold", base_url: process.env.VOICEINK_TENSORFOLD_BASE_URL || "http://127.0.0.1:8300/v1" },
   { name: "splash", base_url: process.env.VOICEINK_SPLASH_BASE_URL || "http://127.0.0.1:8100/v1" },
+  { name: "tensorfold", base_url: process.env.VOICEINK_TENSORFOLD_BASE_URL || "http://127.0.0.1:8300/v1" },
   { name: "mtplx", base_url: process.env.VOICEINK_MTPLX_BASE_URL || "http://127.0.0.1:8201/v1" },
 ];
 
