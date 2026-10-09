@@ -1,6 +1,6 @@
 # 📅 Local AI Calendar (Alfred 5 Workflow)
 
-An ultra-fast, privacy-first natural language calendar assistant for Alfred 5. It parses calendar instructions with your local LLM fleet (TensorFold / Splash / MTPLX) — falling back to the M.A.M.A remote route when no local route is up — and interacts directly with the macOS Calendar database using Apple's official `EventKit` framework.
+An ultra-fast, privacy-first natural language calendar assistant for Alfred 5. It parses calendar instructions with your local LLM fleet (QFlash / Splash / TensorFold / MTPLX) — falling back to the M.A.M.A remote route when no local route is up — and interacts directly with the macOS Calendar database using Apple's official `EventKit` framework.
 
 ## 🚀 Features
 
@@ -17,11 +17,11 @@ An ultra-fast, privacy-first natural language calendar assistant for Alfred 5. I
 1. **Alfred 5** (with Powerpack to run workflows).
 2. **[Bun](https://bun.sh/)** installed for fast TypeScript execution.
 3. **A calendar LLM route** — the workflow probes in order and uses the first that answers:
-   - **Local fleet:** TensorFold (`http://127.0.0.1:8300/v1`), Splash (`:8100`), MTPLX (`:8201`) — same routes as `voiceink_cleanup.py`, so the same `VOICEINK_*` env overrides apply.
+   - **Local fleet:** QFlash (`http://127.0.0.1:11234/v1`, mlx-serve 4-bit Flash-Next MoE, probed first at ~0.1-3s), Splash (`:8100`, ~1s), TensorFold (`:8300`, dense 27B, ~25-30s), MTPLX (`:8201`) — same routes as `voiceink_cleanup.py`, so the same `VOICEINK_*` env overrides apply.
    - **M.A.M.A remote:** `qwen3.8-flash-next` on the direct John/Ofus vLLM endpoint (`http://john:8888/v1`, Tailscale hostname `john`) — the Kalliope router (`100.124.155.99:4000`) defers interactive traffic to this direct route.
    - **Offline:** `chrono-node` rule parsing, always available with no network.
 
-   Overrides: `VOICEINK_TENSORFOLD_BASE_URL`, `VOICEINK_SPLASH_BASE_URL`, `VOICEINK_MTPLX_BASE_URL`, `JOHN_OFUS_BASE_URL`, `JOHN_OFUS_MODEL`, and `JOHN_OFUS_API_KEY` / `VOICEINK_MAMA_API_KEY` (remote key, read from `~/.zshenv` if unset).
+   Overrides: `VOICEINK_QFLASH_BASE_URL`, `VOICEINK_TENSORFOLD_BASE_URL`, `VOICEINK_SPLASH_BASE_URL`, `VOICEINK_MTPLX_BASE_URL`, `JOHN_OFUS_BASE_URL`, `JOHN_OFUS_MODEL`, and `JOHN_OFUS_API_KEY` / `VOICEINK_MAMA_API_KEY` (remote key, read from `~/.zshenv` if unset).
 
 ---
 
@@ -29,7 +29,7 @@ An ultra-fast, privacy-first natural language calendar assistant for Alfred 5. I
 
 1. Download the latest `.alfredworkflow` package from the [Releases](https://github.com/kesslerio/alfred-macos-local-ai-calendar-workflow/releases) page.
 2. Double-click the downloaded file to import it into Alfred.
-3. Open Alfred Preferences and make sure at least one route is reachable: a local fleet route (TensorFold/Splash/MTPLX) or the M.A.M.A remote key in `~/.zshenv`. The workflow auto-selects the best route.
+3. Open Alfred Preferences and make sure at least one route is reachable: a local fleet route (QFlash/Splash/TensorFold/MTPLX) or the M.A.M.A remote key in `~/.zshenv`. The workflow auto-selects the best route.
 
 ---
 

@@ -217,11 +217,22 @@ function parseWithChrono(query: string): CalendarEvent {
 // LLM route is unreachable, drop to offline chrono parsing.
 //
 // Local route endpoints mirror the voiceink fleet so the same VOICEINK_*
-// overrides apply everywhere. Splash is probed first: it serves the
-// Qwen3.6-35B-A3B MoE (~1s per parse) while TensorFold's dense 27B needs
-// ~25-30s, so for interactive calendar parsing speed wins.
+// overrides apply everywhere. QFlash (mlx-serve :11234, the 4-bit
+// Flash-Next MoE) is probed first — it answers the full prompt in ~0.1-3s.
+// Splash (~1s) is next; TensorFold's dense 27B (~25-30s) trails for
+// interactive parsing. NOTE: the order is deliberate and differs from
+// voiceink_cleanup.py's (which probes qflash first for dictation cleanup):
+// keep the faster-first order only while the model stays fast — swap to
+// voiceink's exact order if behavior must stay identical across clients.
+// The mlx-serve id comes from /v1/models at runtime; the env name matches
+// voiceink's override (VOICEINK_QFLASH_BASE_URL).
+// NOTE: the qflash probe intentionally matches voiceink's payload fields
+// (chat_template_kwargs + reasoning_effort "none"); sending
+// thinking_budget: 0 ALONE makes this server emit empty content. Do not
+// simplify those fields away on this route.
 
 const LOCAL_ROUTES: Array<{ name: string; base_url: string }> = [
+  { name: "qflash", base_url: process.env.VOICEINK_QFLASH_BASE_URL || "http://127.0.0.1:11234/v1" },
   { name: "splash", base_url: process.env.VOICEINK_SPLASH_BASE_URL || "http://127.0.0.1:8100/v1" },
   { name: "tensorfold", base_url: process.env.VOICEINK_TENSORFOLD_BASE_URL || "http://127.0.0.1:8300/v1" },
   { name: "mtplx", base_url: process.env.VOICEINK_MTPLX_BASE_URL || "http://127.0.0.1:8201/v1" },

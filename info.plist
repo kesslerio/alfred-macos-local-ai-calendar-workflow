@@ -98,7 +98,7 @@
 	<key>createdby</key>
 	<string>kesslerIO</string>
 	<key>description</key>
-	<string>Add, update, or delete Apple Calendar events using your local LLM fleet (TensorFold / Splash / MTPLX), with a M.A.M.A remote fallback.</string>
+	<string>Add, update, or delete Apple Calendar events using your local LLM fleet (QFlash / Splash / TensorFold / MTPLX), with a M.A.M.A remote fallback.</string>
 	<key>disabled</key>
 	<false/>
 	<key>name</key>
@@ -294,7 +294,7 @@ bun run execute_mutation.ts</string>
 		</dict>
 	</array>
 	<key>readme</key>
-	<string>Interactive calendar management using LLM-fleet parsing (TensorFold / Splash / MTPLX) with a M.A.M.A remote fallback and Swift EventKit mutations.
+	<string>Interactive calendar management using LLM-fleet parsing (QFlash / Splash / TensorFold / MTPLX) with a M.A.M.A remote fallback and Swift EventKit mutations.
 
 Usage:
   cal [query] [flag]
